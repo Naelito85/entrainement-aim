@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entraînement de l'Aim</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            cursor: url('sniper-cursor.png') 16 16, auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        #gameArea {
+            position: relative;
+            width: 500px;
+            height: 500px;
+            background-color: #e3e3e3;
+            border: 2px solid #333;
+            display: none; /* Masqué au début */
+            margin-bottom: 20px;
+        }
+
+        .square {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: red;
+            cursor: pointer;
+        }
+
+        #score, #timer, #bestScore {
+            font-size: 1.5rem;
+            margin: 10px 0;
+        }
+
+        #endMessage {
+            display: none;
+            font-size: 1.8rem;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #welcomeScreen {
+            text-align: center;
+        }
+
+        #mainTitle {
+            font-size: 3rem;
+            margin-top: 20px;
+        }
+
+        #menu {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        #menu h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        select {
+            padding: 8px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        option {
+            font-size: 1rem;
+        }
+
+        #returnToMenuBtn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #dc3545;
+            padding: 10px 15px;
+            font-size: 1rem;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #returnToMenuBtn:hover {
+            background-color: #c82333;
+        }
+
+        #menuBtn {
+            background-color: #007bff;
+        }
+
+        #menuBtn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainTitle">Entraînement de l'Aim</div>
+
+    <div id="welcomeScreen">
+        <p>Voulez-vous commencer un entraînement ?</p>
+        <button id="startBtn">Oui</button>
+        <button id="exitBtn">Non</button>
+    </div>
+
+    <div id="gameArea">
+        <div class="square" id="square"></div>
+    </div>
+
+    <div id="score">Score: 0</div>
+    <div id="bestScore">Meilleur score: 0</div> <!-- Meilleur score -->
+    <div id="timer">Temps restant: 30s</div>
+    <div id="endMessage">
+        <div>Temps écoulé !</div>
+        <div>Ton score: <span id="finalScore"></span></div>
+        <button id="restartBtn">Recommencer</button>
+        <button id="menuBtn">Retourner au menu</button>
+    </div>
+
+    <div id="menu">
+        <h2>Temps du jeu</h2>
+        <select id="timeSelector">
+            <option value="10">10 secondes</option>
+            <option value="20">20 secondes</option>
+            <option value="30" selected>30 secondes</option>
+            <option value="60">1 minute</option>
+            <option value="90">1 minute 30</option>
+            <option value="infinity">Infini</option>
+        </select>
+    </div>
+
+    <button id="returnToMenuBtn">Retourner au menu</button>
+
+    <script>
+        let score = 0;
+        let timeRemaining = 30;
+        let timerInterval;
+        let bestScores = { 10: 0, 20: 0, 30: 0, 60: 0, 90: 0, infinity: 0 };  // Meilleurs scores par mode de durée
+        let gameArea = document.getElementById('gameArea');
+        let square = document.getElementById('square');
+        let scoreDisplay = document.getElementById('score');
+        let bestScoreDisplay = document.getElementById('bestScore');
+        let timerDisplay = document.getElementById('timer');
+        let endMessage = document.getElementById('endMessage');
+        let finalScoreDisplay = document.getElementById('finalScore');
+        let restartBtn = document.getElementById('restartBtn');
+        let menuBtn = document.getElementById('menuBtn');
+        let returnToMenuBtn = document.getElementById('returnToMenuBtn');
+        let welcomeScreen = document.getElementById('welcomeScreen');
+        let timeSelector = document.getElementById('timeSelector');
+        let selectedTime = 30;
+
+        let gameOver = false;
+
+        function getRandomPosition() {
+            const x = Math.floor(Math.random() * (gameArea.offsetWidth - square.offsetWidth));
+            const y = Math.floor(Math.random() * (gameArea.offsetHeight - square.offsetHeight));
+            return { x, y };
+        }
+
+        function moveSquare() {
+            const { x, y } = getRandomPosition();
+            square.style.left = `${x}px`;
+            square.style.top = `${y}px`;
+        }
+
+        function startGame() {
+            welcomeScreen.style.display = 'none';
+            gameArea.style.display = 'block';
+            score = 0;
+            timeRemaining = parseInt(timeSelector.value);
+            selectedTime = timeSelector.value;
+            gameOver = false;
+            scoreDisplay.textContent = `Score: ${score}`;
+            timerDisplay.textContent = `Temps restant: ${timeRemaining}s`;
+
+            endMessage.style.display = 'none';
+
+            timerInterval = setInterval(function() {
+                if (timeRemaining > 0) {
+                    timeRemaining--;
+                    timerDisplay.textContent = `Temps restant: ${timeRemaining}s`;
+                }
+                if (timeRemaining <= 0 && timeSelector.value !== "infinity") {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+
+            moveSquare();
+        }
+
+        function endGame() {
+            finalScoreDisplay.textContent = score;
+
+            if (score > bestScores[selectedTime]) {
+                bestScores[selectedTime] = score;
+                bestScoreDisplay.textContent = `Meilleur score (${selectedTime}s): ${bestScores[selectedTime]}`;
+            }
+
+            gameOver = true;
+            endMessage.style.display = 'block';
+        }
+
+        function restartGame() {
+            gameOver = false;
+            startGame();
+        }
+
+        square.addEventListener('click', function() {
+            if (!gameOver) {
+                score++;
+                scoreDisplay.textContent = `Score: ${score}`;
+
+                if (score > bestScores[selectedTime]) {
+                    bestScores[selectedTime] = score;
+                    bestScoreDisplay.textContent = `Meilleur score (${selectedTime}s): ${bestScores[selectedTime]}`;
+                }
+
+                moveSquare();
+            }
+        });
+
+        document.getElementById('startBtn').addEventListener('click', function() {
+            startGame();
+        });
+
+        document.getElementById('exitBtn').addEventListener('click', function() {
+            window.close();
+        });
+
+        restartBtn.addEventListener('click', restartGame);
+
+        returnToMenuBtn.addEventListener('click', function() {
+            gameArea.style.display = 'none';
+            endMessage.style.display = 'none';
+            welcomeScreen.style.display = 'block';
+        });
+
+        menuBtn.addEventListener('click', function() {
+            gameArea.style.display = 'none';
+            endMessage.style.display = 'none';
+            welcomeScreen.style.display = 'block';
+        });
+
+        timeSelector.addEventListener('change', function() {
+            selectedTime = timeSelector.value;
+
+            // Mettre à jour le meilleur score selon le temps sélectionné
+            bestScoreDisplay.textContent = `Meilleur score (${selectedTime}s): ${bestScores[selectedTime]}`;
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
